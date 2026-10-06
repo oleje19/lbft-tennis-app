@@ -81,7 +81,7 @@ async function saveProfile(){
 
   if(error){
     console.error(error);
-    alert('La synchronisation avec la base du club a échoué.');
+    alert(`Erreur Supabase : ${error.message} (code ${error.code||'inconnu'})`);
     return;
   }
 
