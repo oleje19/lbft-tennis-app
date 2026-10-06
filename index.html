@@ -27,14 +27,182 @@ main{max-width:760px;margin:auto;padding:16px 16px 94px}.hero{background:linear-
 <section id="profile" class="view"><div class="section-head"><h2>👤 Mon profil</h2></div><div class="card profile"><div class="pic" id="profilePic">JF</div><div><h3 style="margin:0" id="profileName">Jérôme</h3><div class="muted" id="profileCategory">Adulte · Tennis</div></div></div><div class="card"><div class="row"><b>Niveau</b><span id="profileLevel">30/2</span></div><div class="row" style="margin-top:12px"><b>Je recherche</b><span id="profileSearch">Loisir & compétition</span></div><div class="row" style="margin-top:12px"><b>Je joue</b><span id="profilePlay">Simple & double</span></div><div style="margin-top:14px"><b>Disponibilités</b><div id="profileAvailability"><span class="tag">Mardi 18h–20h</span><span class="tag">Jeudi 18h–20h</span><span class="tag">Samedi matin</span></div></div><button class="cta" onclick="openProfileForm()">Modifier mon profil</button></div><div class="card"><h3 style="margin-top:0">🆕 Nouveau testeur ?</h3><p class="muted">Crée ton profil de test pour apparaître dans la recherche de partenaires.</p><button class="outline" onclick="openProfileForm()">Créer mon profil</button></div></section>
 <section id="register" class="view"><div class="section-head"><h2>👋 Créer mon profil</h2></div><div class="card"><p class="muted">Pour la V1.1, remplis simplement ces informations. Elles restent enregistrées sur cet appareil dans cette version de test.</p><label>Prénom<br><input id="fName" placeholder="Ex. Thomas" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px"></label><label>Niveau<br><select id="fLevel" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px"><option>NC</option><option>40</option><option>30/5</option><option>30/4</option><option>30/3</option><option>30/2</option><option>30/1</option><option>30</option><option>15/5</option><option>15/4</option><option>15/3</option><option>15/2</option><option>15/1</option></select></label><label>Je recherche<br><select id="fSearch" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px"><option>Loisir</option><option>Compétition</option><option>Loisir & compétition</option></select></label><label>Je joue<br><select id="fPlay" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px"><option>Simple</option><option>Double</option><option>Simple & double</option></select></label><label>Disponibilités<br><input id="fDays" placeholder="Ex. Mardi 18h–20h, samedi matin" style="width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px"></label><button class="cta" onclick="saveProfile()">Enregistrer mon profil</button></div></section>
 </main><div class="bottom"><nav class="nav"><button class="active" onclick="show('home',this)"><strong>⌂</strong>Accueil</button><button onclick="show('partners',this)"><strong>🎾</strong>Partenaires</button><button onclick="show('events',this)"><strong>📅</strong>Événements</button><button onclick="show('news',this)"><strong>📢</strong>Actualités</button><button onclick="show('profile',this)"><strong>👤</strong>Profil</button></nav></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL='https://gxorfllkccqffnaqjbon.supabase.co';
+const SUPABASE_KEY='sb_publishable_5WahVD3g-kwY1QcxfBkO5A_ifltXiCQ';
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
 let user=JSON.parse(localStorage.getItem('lbftUser')||'null');
-function openProfileForm(){show('register');if(user){fName.value=user.name;fLevel.value=user.level;fSearch.value=user.search;fPlay.value=user.play;fDays.value=user.days}}
-function saveProfile(){const name=fName.value.trim();if(!name){alert('Indique ton prénom');return}user={name,level:fLevel.value,search:fSearch.value,play:fPlay.value,days:fDays.value||'À définir'};localStorage.setItem('lbftUser',JSON.stringify(user));updateProfile();show('profile');alert('Profil enregistré sur cet appareil. La synchronisation entre plusieurs téléphones sera ajoutée avec la base en ligne.');}
-function updateProfile(){if(!user)return;const initials=user.name.slice(0,2).toUpperCase();headerAvatar.textContent=initials;profilePic.textContent=initials;profileName.textContent=user.name;profileLevel.textContent=user.level;profileSearch.textContent=user.search;profilePlay.textContent=user.play;profileCategory.textContent='Adhérent · Tennis';profileAvailability.innerHTML=user.days.split(',').map(x=>`<span class="tag">📅 ${x.trim()}</span>`).join('')}
+let userId=localStorage.getItem('lbftUserId');
+
+if(!userId){
+  userId=crypto.randomUUID();
+  localStorage.setItem('lbftUserId',userId);
+}
+
+function openProfileForm(){
+  show('register');
+  if(user){
+    fName.value=user.name;
+    fLevel.value=user.level;
+    fSearch.value=user.search;
+    fPlay.value=user.play;
+    fDays.value=user.days;
+  }
+}
+
+async function saveProfile(){
+  const name=fName.value.trim();
+
+  if(!name){
+    alert('Indique ton prénom');
+    return;
+  }
+
+  user={
+    name,
+    level:fLevel.value,
+    search:fSearch.value,
+    play:fPlay.value,
+    days:fDays.value||'À définir'
+  };
+
+  localStorage.setItem('lbftUser',JSON.stringify(user));
+
+  const {error}=await db.from('profiles').upsert({
+    id:userId,
+    name:user.name,
+    level:user.level,
+    search:user.search,
+    play:user.play,
+    availability:user.days
+  },{onConflict:'id'});
+
+  if(error){
+    console.error(error);
+    alert('La synchronisation avec la base du club a échoué.');
+    return;
+  }
+
+  updateProfile();
+  await loadPartners();
+  show('profile');
+
+  alert('Profil enregistré et partagé avec les autres testeurs.');
+}
+
+function updateProfile(){
+  if(!user)return;
+
+  const initials=user.name.slice(0,2).toUpperCase();
+
+  headerAvatar.textContent=initials;
+  profilePic.textContent=initials;
+  profileName.textContent=user.name;
+  profileLevel.textContent=user.level;
+  profileSearch.textContent=user.search;
+  profilePlay.textContent=user.play;
+  profileCategory.textContent='Adhérent · Tennis';
+
+  profileAvailability.innerHTML=user.days
+    .split(',')
+    .map(x=>`<span class="tag">📅 ${x.trim()}</span>`)
+    .join('');
+}
+
 updateProfile();
-const partners=[{name:'Thomas',level:'30/1',type:'loisir',play:'Simple',days:'Mardi 18h–20h',emoji:'T'},{name:'Marie',level:'30/2',type:'competition',play:'Simple & double',days:'Jeudi 18h–20h',emoji:'M'},{name:'Julien',level:'30/3',type:'loisir',play:'Double',days:'Samedi matin',emoji:'J'},{name:'Sophie',level:'15/5',type:'competition',play:'Simple',days:'Mardi 18h–20h',emoji:'S'}];
-function show(id,btn){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');else{const map={home:0,partners:1,events:2,news:3,profile:4};document.querySelectorAll('.nav button')[map[id]].classList.add('active')}window.scrollTo({top:0,behavior:'smooth'})}
-function render(filter='all'){const el=document.getElementById('partnerList');const arr=filter==='all'?partners:partners.filter(p=>p.type===filter||p.play.toLowerCase().includes(filter));el.innerHTML=arr.map(p=>`<div class="card"><div class="profile"><div class="pic">${p.emoji}</div><div><h3 style="margin:0">${p.name}</h3><div class="muted">Niveau ${p.level} · ${p.play}</div></div></div><div style="margin-top:10px"><span class="tag">${p.type==='loisir'?'🎾 Loisir':'🏆 Compétition'}</span><span class="tag">📅 ${p.days}</span></div><button class="cta" onclick="alert('Proposition envoyée à ${p.name} — démo V1')">Proposer une partie</button></div>`).join('')}
-function filter(btn,f){document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');render(f)}render();
+
+const demoPartners=[
+  {name:'Thomas',level:'30/1',type:'loisir',play:'Simple',days:'Mardi 18h–20h',emoji:'T'},
+  {name:'Marie',level:'30/2',type:'competition',play:'Simple & double',days:'Jeudi 18h–20h',emoji:'M'},
+  {name:'Julien',level:'30/3',type:'loisir',play:'Double',days:'Samedi matin',emoji:'J'},
+  {name:'Sophie',level:'15/5',type:'competition',play:'Simple',days:'Mardi 18h–20h',emoji:'S'}
+];
+
+let partners=[...demoPartners];
+
+function show(id,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+
+  if(btn){
+    btn.classList.add('active');
+  }else{
+    const map={home:0,partners:1,events:2,news:3,profile:4};
+    document.querySelectorAll('.nav button')[map[id]].classList.add('active');
+  }
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function render(filter='all'){
+  const el=document.getElementById('partnerList');
+
+  const arr=filter==='all'
+    ?partners
+    :partners.filter(p=>p.type===filter||p.play.toLowerCase().includes(filter));
+
+  el.innerHTML=arr.map(p=>`
+    <div class="card">
+      <div class="profile">
+        <div class="pic">${p.emoji}</div>
+        <div>
+          <h3 style="margin:0">${p.name}</h3>
+          <div class="muted">Niveau ${p.level} · ${p.play}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <span class="tag">${p.type==='loisir'?'🎾 Loisir':'🏆 Compétition'}</span>
+        <span class="tag">📅 ${p.days}</span>
+      </div>
+
+      <button class="cta" onclick="alert('Proposition envoyée à ${p.name} — prochaine étape : messagerie')">
+        Proposer une partie
+      </button>
+    </div>
+  `).join('');
+}
+
+function filter(btn,f){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  render(f);
+}
+
+async function loadPartners(){
+
+  const {data,error}=await db
+    .from('profiles')
+    .select('id,name,level,search,play,availability')
+    .order('created_at',{ascending:false});
+
+  if(error){
+    console.error(error);
+    render();
+    return;
+  }
+
+  const online=(data||[])
+    .filter(p=>p.id!==userId)
+    .map(p=>({
+      name:p.name,
+      level:p.level,
+      type:(p.search||'').toLowerCase().includes('compétition')
+        ?'competition'
+        :'loisir',
+      play:p.play||'Simple',
+      days:p.availability||'À définir',
+      emoji:(p.name||'?').slice(0,1).toUpperCase()
+    }));
+
+  partners=online.length?online:demoPartners;
+
+  render();
+}
+
+loadPartners();
 </script></body></html>
