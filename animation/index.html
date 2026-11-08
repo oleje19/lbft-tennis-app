@@ -45,7 +45,25 @@ function changeTeam(id,v){let p=state.players.find(x=>x.id===id);if(p)p.team=+v;
 function removePlayer(id){state.players=state.players.filter(p=>p.id!==id);save()}
 function removeActivity(id){state.activities=state.activities.filter(a=>a.id!==id);save()}
 function addPlayers(names,level,team){names.forEach(name=>{name=name.trim();if(name&&!state.players.some(p=>p.name.toLowerCase()===name.toLowerCase()))state.players.push({id:crypto.randomUUID(),name,level:+level,team:team===''?Math.floor(Math.random()*4):+team,played:[],partners:[]})})}
-function balance(){if(!state.players.length){alert('Ajoute ou charge d’abord des joueurs.');return}let sorted=[...state.players].map(p=>({...p,level:Math.min(5,Math.max(1,Number(p.level)||3))})).sort((a,b)=>b.level-a.level);let sums=[0,0,0,0],counts=[0,0,0,0];sorted.forEach(p=>{let order=[0,1,2,3].sort((a,b)=>{let avA=counts[a]?sums[a]/counts[a]:0,avB=counts[b]?sums[b]/counts[b]:0;return avA-avB||counts[a]-counts[b]});let t=order[0];let original=state.players.find(x=>x.id===p.id);original.level=p.level;original.team=t;sums[t]+=p.level;counts[t]++});save();$('rotationStatus').textContent='Équipes équilibrées : '+counts.map((n,i)=>TEAM_NAMES[i]+' '+n+' joueurs (niveau total '+sums[i]+')').join(' · ');alert('Répartition effectuée ! 4 équipes équilibrées ont été constituées.');}
+function balance(){
+ if(!state.players.length){alert('Ajoute ou charge d’abord des joueurs.');return}
+ const sorted=[...state.players].sort((a,b)=>(Number(b.level)||3)-(Number(a.level)||3));
+ const sums=[0,0,0,0],counts=[0,0,0,0];
+ sorted.forEach(p=>{
+  const minCount=Math.min(...counts);
+  const candidates=[0,1,2,3].filter(t=>counts[t]===minCount);
+  candidates.sort((a,b)=>sums[a]-sums[b]);
+  const team=candidates[0];
+  p.team=team;
+  p.level=Math.min(5,Math.max(1,Number(p.level)||3));
+  sums[team]+=p.level;
+  counts[team]++;
+ });
+ save();
+ const summary=counts.map((n,i)=>'Équipe '+TEAM_NAMES[i]+' : '+n+' joueur(s)').join(' · ');
+ $('rotationStatus').textContent='Répartition équilibrée — '+summary;
+ alert('Répartition effectuée !\\n'+summary);
+}
 $('addPlayers').onclick=()=>{addPlayers($('playerNames').value.split(/\n/),$('defaultLevel').value,$('defaultTeam').value);$('playerNames').value='';save()};
 $('balanceTeams').addEventListener('click',e=>{e.preventDefault();balance()});
 $('moveBtn').onclick=()=>{let p=state.players.find(p=>p.id===$('movePlayer').value);if(p)p.team=+$('moveTeam').value;save()};
