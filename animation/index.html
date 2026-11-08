@@ -108,17 +108,11 @@ function generateRound(){
   while(placed+groupSize<=capacity && available().length>=groupSize){
    let group=[];
    if(groupSize===4){
-    const teams=[0,1,2,3].sort((x,y)=>available().filter(p=>p.team===y).length-available().filter(p=>p.team===x).length);
-    let first=null,second=null;
-    for(const t of teams){const pair=choosePair(available().filter(p=>p.team===t));if(pair){first=pair;break}}
-    if(first){
-     first.forEach(p=>used.add(p.id));
-     for(const t of teams){const pair=choosePair(available().filter(p=>p.team===t));if(pair){second=pair;break}}
-     if(second)group=first.concat(second);else first.forEach(p=>used.delete(p.id));
-    }
-    if(group.length!==4)group=available().sort((x,y)=>x.played.length-y.played.length).slice(0,4);
-   }else{
-    const teams=[0,1,2,3].sort((x,y)=>available().filter(p=>p.team===y).length-available().filter(p=>p.team===x).length);
+    // En double, les deux binômes doivent représenter deux équipes différentes.
+    const teamPairs=[0,1,2,3].map(t=>({team:t,pair:choosePair(available().filter(p=>p.team===t))})).filter(x=>x.pair);
+    teamPairs.sort((x,y)=>(x.pair[0].played.length+x.pair[1].played.length)-(y.pair[0].played.length+y.pair[1].played.length));
+    if(teamPairs.length>=2)group=teamPairs[0].pair.concat(teamPairs[1].pair);
+   }else{    const teams=[0,1,2,3].sort((x,y)=>available().filter(p=>p.team===y).length-available().filter(p=>p.team===x).length);
     for(const t of teams){const pair=choosePair(available().filter(p=>p.team===t));if(pair){group=pair;break}}
     if(group.length!==2)group=choosePair(available())||[];
    }
