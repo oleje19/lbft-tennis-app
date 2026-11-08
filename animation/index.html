@@ -27,7 +27,7 @@ const TEAM_NAMES=['Rouge','Bleue','Verte','Jaune'], TEAM_CLASSES=['team-red','te
 let state={players:[],activities:[],round:0,board:[],results:[],history:[],mode:'return',scoreMode:'table',roundDuration:15};
 const $=id=>document.getElementById(id);
 function save(){try{localStorage.setItem('lbftAnimationV2',JSON.stringify(state))}catch(e){} render()}
-function load(){try{let s=JSON.parse(localStorage.getItem('lbftAnimationV2'));if(s)state={...state,...s}}catch(e){}}
+function load(){try{let raw=localStorage.getItem('lbftAnimationV2')||localStorage.getItem('lbftAnimationV1');let s=raw?JSON.parse(raw):null;if(s)state={...state,...s}}catch(e){}}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function teamDot(t){return `<span class="teamdot ${TEAM_CLASSES[t]}"></span>`}
 function teamOptions(selected){return TEAM_NAMES.map((n,i)=>`<option value="${i}" ${i===selected?'selected':''}>${n}</option>`).join('')}
